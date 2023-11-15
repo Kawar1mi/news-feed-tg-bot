@@ -19,6 +19,14 @@ func NewSourcePostgresStorage(db *sqlx.DB) *SourcePostgresStorage {
 	}
 }
 
+type dbSource struct {
+	ID        int64     `db:"id"`
+	Name      string    `db:"name"`
+	FeedURL   string    `db:"feed_url"`
+	Priority  int       `db:"priority"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
 func (s *SourcePostgresStorage) Sources(ctx context.Context) ([]model.Source, error) {
 	var sources []dbSource
 
@@ -42,18 +50,30 @@ func (s *SourcePostgresStorage) SourceByID(ctx context.Context, id int64) (*mode
 }
 
 func (s *SourcePostgresStorage) Add(ctx context.Context, source model.Source) (int64, error) {
-	s.db.QueryRowxContext()
+	var id int64
+
+	row := s.db.QueryRowxContext(
+		ctx,
+		"INSERT INTO sources (name, feed_url, priority) VALUES ($1, $2, $3) RETURNING id",
+		source.Name, source.FeedURL, source.Priority)
+
+	if err := row.Err(); err != nil {
+		return id, err
+	}
+
+	if err := row.Scan(&id); err != nil {
+		return id, err
+	}
+
+	return id, nil
 
 }
 
 func (s *SourcePostgresStorage) Delete(ctx context.Context, id int64) error {
-	s.db.ExecContext()
-}
+	_, err := s.db.ExecContext(ctx, "DELETE FROM sources WHERE ID = $1", id)
+	if err != nil {
+		return err
+	}
 
-type dbSource struct {
-	ID        int64     `db:"id"`
-	Name      string    `db:"name"`
-	FeedURL   string    `db:"feed_url"`
-	Priority  int       `db:"priority"`
-	CreatedAt time.Time `db:"created_at"`
+	return nil
 }
