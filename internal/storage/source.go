@@ -77,3 +77,15 @@ func (s *SourcePostgresStorage) Delete(ctx context.Context, id int64) error {
 
 	return nil
 }
+
+func (s *SourcePostgresStorage) SetPriority(ctx context.Context, id int64, priority int) error {
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	_, err = conn.ExecContext(ctx, `UPDATE sources SET priority = $1 WHERE id = $2`, priority, id)
+
+	return err
+}
